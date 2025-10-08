@@ -1,4 +1,3 @@
-# currently = only captures and checks are evaluated. let's see which engine does better.
 import chess
 import sys
 import time
@@ -24,19 +23,13 @@ class Engine():
                 elif color == chess.BLACK:
                     material_difference -= piece[1]*len(board.pieces(piece[0], color))
         return material_difference
-    def filter_moves(self, board: chess.Board, move_list: list):
-        checks_and_captures = []
-        for move in move_list:
-            if board.gives_check(move) or board.is_capture(move):
-                checks_and_captures.append(move)
-        return checks_and_captures
     def negamax(self, board: chess.Board, depth: int, color: int, start_time: float, max_time: float): # psuedocode taken from https://www.chessprogramming.org/Negamax
         if depth == 0 or board.is_game_over() or board.can_claim_draw():
             return self.get_material(board)*color
         elif start_time+max_time <= time.time():
             return None
         max = -sys.maxsize
-        for move in self.filter_moves(board, list(board.legal_moves)):
+        for move in list(board.legal_moves):
             board.push(move)
             try:
                 score = -self.negamax(board, depth-1, -color, start_time, max_time)
@@ -81,38 +74,3 @@ class Engine():
             current_depth += 1
             lists.append(best_moves)
         return random.choice(lists[-1])
-class Stockfish():
-    def convert(self, score: chess.engine.Cp):
-        if "#" not in str(score):
-            return int(str(score))
-        else:
-            mate_count = int(str(score).replace("#", ""))
-            if mate_count < 0:
-                return -100000+mate_count
-            elif mate_count > 0:
-                return 100000-mate_count
-    def play(self, board: chess.Board, time_limit: float, cp_loss: int):
-        engine = chess.engine.SimpleEngine.popen_uci("/opt/homebrew/bin/stockfish")
-        scores = []
-        max_score = -sys.maxsize
-        for move in board.legal_moves:
-            board.push(move)
-            if board.can_claim_draw() or board.result() == "1/2-1/2":
-                score = 0
-            elif board.result() == "0-1" or board.result() == "1-0":
-                score = 100000
-            else:
-                score = self.convert(-engine.analyse(board, chess.engine.Limit(time=time_limit))["score"].relative)
-            if score is not None:
-                if score > max_score:
-                    max_score = score
-                scores.append([move, score])
-            board.pop()
-        if abs(max_score) == 100000:
-            cp_loss = 0
-        engine.quit()
-        best_moves = []
-        for move in scores:
-            if move[1] >= max_score-cp_loss:
-                best_moves.append(move[0])
-        return random.choice(best_moves)
