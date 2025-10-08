@@ -23,13 +23,21 @@ class Engine():
                 elif color == chess.BLACK:
                     material_difference -= piece[1]*len(board.pieces(piece[0], color))
         return material_difference
+    def filter_moves(self, board: chess.Board, moves_list: list):
+        new_moves = []
+        for move in moves_list:
+            if board.gives_check(move) or board.is_capture(move):
+                new_moves.append(move)
+        if len(new_moves) == 0:
+            return list(board.legal_moves)
+        return new_moves
     def negamax(self, board: chess.Board, depth: int, color: int, start_time: float, max_time: float): # psuedocode taken from https://www.chessprogramming.org/Negamax
         if depth == 0 or board.is_game_over() or board.can_claim_draw():
             return self.get_material(board)*color
         elif start_time+max_time <= time.time():
             return None
         max = -sys.maxsize
-        for move in list(board.legal_moves):
+        for move in self.filter_moves(board, list(board.legal_moves)):
             board.push(move)
             try:
                 score = -self.negamax(board, depth-1, -color, start_time, max_time)
@@ -53,7 +61,7 @@ class Engine():
         while True:
             best_moves = []
             max_score = -sys.maxsize
-            for move in board.legal_moves:
+            for move in self.filter_moves(board, list(board.legal_moves)):
                 board.push(move)
                 try:
                     score = -self.negamax(board, current_depth, -color, start, max_time)
